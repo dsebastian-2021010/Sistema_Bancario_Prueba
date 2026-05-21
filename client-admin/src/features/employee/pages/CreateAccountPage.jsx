@@ -1,12 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
 import { CreditCard, Search, CheckCircle, Loader2, UserCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getClients, createAccountForClient } from '@/shared/apis/employee.js';
 import toast from 'react-hot-toast';
-
-const ACCOUNT_TYPES = ['AHORRO', 'CORRIENTE', 'MONETARIA'];
-const CURRENCIES = ['GTQ', 'USD', 'EUR'];
 
 export default function CreateAccountPage() {
   const [clients, setClients] = useState([]);
@@ -16,13 +12,13 @@ export default function CreateAccountPage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(null);
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm({
-    defaultValues: { tipoCuenta: 'AHORRO', divisa: 'GTQ' },
-  });
-
   useEffect(() => {
     getClients()
-      .then((res) => setClients(res.clients || []))
+      .then((res) => {
+        const list = Array.isArray(res?.clients) ? res.clients
+          : Array.isArray(res) ? res : [];
+        setClients(list);
+      })
       .catch(() => {})
       .finally(() => setClientsLoading(false));
   }, []);
@@ -36,21 +32,18 @@ export default function CreateAccountPage() {
     return name.includes(q) || username.includes(q) || email.includes(q);
   });
 
-  const onSubmit = async (data) => {
+  const handleCreate = async () => {
     if (!selectedClient) {
-      toast.error('Debes seleccionar un cliente primero.');
+      toast.error('Selecciona un cliente primero.');
       return;
     }
     try {
       setSubmitting(true);
       const result = await createAccountForClient({
         idUsuario: selectedClient.id || selectedClient._id,
-        tipoCuenta: data.tipoCuenta,
-        divisa: data.divisa,
       });
       setSuccess(result);
       toast.success('Cuenta creada correctamente.');
-      reset();
       setSelectedClient(null);
       setClientSearch('');
     } catch (err) {
@@ -85,6 +78,7 @@ export default function CreateAccountPage() {
       )}
 
       <div className="grid gap-6 md:grid-cols-2">
+        {/* Client selector */}
         <Card className="bg-card/60 backdrop-blur border-border/50">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
@@ -137,62 +131,43 @@ export default function CreateAccountPage() {
           </CardContent>
         </Card>
 
+        {/* Confirm panel */}
         <Card className="bg-card/60 backdrop-blur border-border/50">
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <CreditCard className="h-4 w-4 text-primary" /> Datos de la cuenta
+              <CreditCard className="h-4 w-4 text-primary" /> Confirmar apertura
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             {selectedClient ? (
-              <div className="mb-4 p-3 rounded-xl bg-primary/5 border border-primary/20">
-                <p className="text-xs text-muted-foreground mb-0.5">Cliente seleccionado</p>
+              <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 space-y-1">
+                <p className="text-xs text-muted-foreground">Cliente seleccionado</p>
                 <p className="text-sm font-semibold text-primary">
                   {[selectedClient.name, selectedClient.surname].filter(Boolean).join(' ') || selectedClient.username}
                 </p>
                 <p className="text-xs text-muted-foreground">@{selectedClient.username}</p>
+                {selectedClient.email && (
+                  <p className="text-xs text-muted-foreground">{selectedClient.email}</p>
+                )}
               </div>
             ) : (
-              <div className="mb-4 p-3 rounded-xl bg-muted/20 border border-border/30 text-center">
+              <div className="p-4 rounded-xl bg-muted/20 border border-border/30 text-center">
                 <p className="text-xs text-muted-foreground">Selecciona un cliente para continuar</p>
               </div>
             )}
 
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-1.5">Tipo de cuenta</label>
-                <select
-                  {...register('tipoCuenta', { required: true })}
-                  className="w-full px-3 py-2.5 text-sm rounded-lg border border-border bg-background/50 outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/30 transition-all"
-                >
-                  {ACCOUNT_TYPES.map((t) => (
-                    <option key={t} value={t}>{t}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-1.5">Divisa</label>
-                <select
-                  {...register('divisa', { required: true })}
-                  className="w-full px-3 py-2.5 text-sm rounded-lg border border-border bg-background/50 outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/30 transition-all"
-                >
-                  {CURRENCIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-              <button
-                type="submit"
-                disabled={submitting || !selectedClient}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                {submitting ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" /> Creando cuenta...</>
-                ) : (
-                  <><CreditCard className="h-4 w-4" /> Crear cuenta</>
-                )}
-              </button>
-            </form>
+            <button
+              type="button"
+              onClick={handleCreate}
+              disabled={submitting || !selectedClient}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+            >
+              {submitting ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Creando cuenta...</>
+              ) : (
+                <><CreditCard className="h-4 w-4" /> Abrir cuenta</>
+              )}
+            </button>
           </CardContent>
         </Card>
       </div>

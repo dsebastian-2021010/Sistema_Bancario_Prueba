@@ -15,8 +15,8 @@ export async function getClientAccounts(userId) {
   return { accounts: data.accounts || [] };
 }
 
-export async function createAccountForClient({ idUsuario, tipoCuenta, divisa }) {
-  const { data } = await axiosBank.post('/accounts', { idUsuario, tipoCuenta, divisa });
+export async function createAccountForClient({ idUsuario }) {
+  const { data } = await axiosBank.post('/accounts', { idUsuario });
   return data;
 }
 
